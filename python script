@@ -1,60 +1,80 @@
 from xml.etree import ElementTree as ET
 import cv2
+import os
 
-# read the image and corresponding XML file
-# here are hard-coded and need to be more dynamic 
-img = cv2.imread("0001.png")
-tree = ET.parse('C:/Users/rxie/PycharmProjects/corpImage/python_script_test_1_archive/0001.xml')
-root = tree.getroot()
-image_no = 1
+# *** put in the path of image and xml folders here ***
+image_folder_path = 'C:/LAREX/LAREX/src/main/webapp/resources/books/100pages'
+xml_folder_path = 'C:/Users/rxie/Desktop/xml_folder'
 
-# specify namespace from the XML file
-namespaces = {'doc': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15'}
+image_no = 0
+xml_no = 0
 
-# cover the images with plain white color if there are any
-for image_tag in root.findall('doc:Page/doc:ImageRegion/doc:Coords', namespaces=namespaces):
-    image_value = image_tag.get('points')
+# processing every image and its corresponding xml file
+for filename in os.listdir(image_folder_path):
+    if filename.endswith(".png"):
 
-    # tokenized the x,y coordinates
-    s = image_value.split(' ')
-    s = [list(map(int, i.split(','))) for i in s]
-    x = [i[0] for i in s]
-    y = [i[1] for i in s]
+        # read all the images and its xml files
+        img = cv2.imread(image_folder_path + '/' + str(image_no) + '.png')
+        xml = xml_folder_path +'/' + str(xml_no) + '.xml'
+        tree = ET.parse(xml)
+        root = tree.getroot()
+        image_part = 0
 
-    # find the max and min of x,y coords and form a rectangle image
-    max_X, min_X = max(x), min(x)
-    max_Y, min_Y = max(y), min(y)
-    crop_img = img[min_Y:max_Y, min_X:max_X]
+        # specify namespace from the xml file
+        namespaces = {'doc': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15'}
 
-    # creat mask and cover the image
-    mask = cv2.rectangle(img, (min_X - 17, min_Y), (max_X + 17, max_Y), (255, 255, 255), -1)
-    result = cv2.bitwise_and(img, mask)
-    img = result
+        # cover the images with plain white spaces if there are any
+        for image_tag in root.findall('doc:Page/doc:ImageRegion/doc:Coords', namespaces=namespaces):
+            image_value = image_tag.get('points')
 
-# Prefix all named elements in the XML file, and loop through each coordinate
-for tag in root.findall('doc:Page/doc:TextRegion/doc:Coords', namespaces=namespaces):
-    value = tag.get('points')
+            # tokenized the x,y coordinates
+            s = image_value.split(' ')
+            s = [list(map(int, i.split(','))) for i in s]
+            x = [i[0] for i in s]
+            y = [i[1] for i in s]
 
-    # tokenized the x,y coordinates
-    s = value.split(' ')
-    s = [list(map(int, i.split(','))) for i in s]
-    x = [i[0] for i in s]
-    y = [i[1] for i in s]
+            # find the max and min of x,y coords and form a rectangle image
+            max_X, min_X = max(x), min(x)
+            max_Y, min_Y = max(y), min(y)
+            crop_img = img[min_Y:max_Y, min_X:max_X]
 
-    # find the max and min of x,y coords and form a rectangle image
-    max_X, min_X = max(x), min(x)
-    max_Y, min_Y = max(y), min(y)
-    crop_img = img[min_Y:max_Y, min_X:max_X]
+            # creat mask and cover the image
+            mask = cv2.rectangle(img, (min_X - 5, min_Y), (max_X + 5, max_Y), (255, 255, 255), -1)
+            result = cv2.bitwise_and(img, mask)
+            img = result
 
-    # resize
-    crop_img = cv2.resize(crop_img, None, fx=0.5, fy=0.5)
+        # Prefix all named elements in the XML file, and loop through each coordinate
+        for tag in root.findall('doc:Page/doc:TextRegion/doc:Coords', namespaces=namespaces):
+            value = tag.get('points')
 
-    # save the results
-    name = 'C:/Users/rxie/Desktop/result_folder/result_' + str(image_no) + '.jpg'
-    cv2.imwrite(name, crop_img)
-    image_no += 1
+            # tokenized the x,y coordinates
+            s = value.split(' ')
+            s = [list(map(int, i.split(','))) for i in s]
+            x = [i[0] for i in s]
+            y = [i[1] for i in s]
 
-    # show the image
-    cv2.imshow('result', crop_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+            # find the max and min of x,y coords and form a rectangle image
+            max_X, min_X = max(x), min(x)
+            max_Y, min_Y = max(y), min(y)
+            crop_img = img[min_Y:max_Y, min_X:max_X]
+
+            # resize
+            # crop_img = cv2.resize(crop_img, None, fx=0.5, fy=0.5)
+
+            # clean out all the small images. Only save paragraphs
+            height, width, channels = crop_img.shape
+            # print(height, width)
+            if height > 54 and width > 700:
+
+                # save the results
+                name = 'C:/Users/rxie/Desktop/result_folder/page ' + str(image_no) + ' - part ' + str(image_part) + '.jpg'
+                cv2.imwrite(name, crop_img)
+                image_part += 1
+
+                # show the final images
+                # cv2.imshow('page ' + str(image_no) + ' - part ' + str(image_part), crop_img)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+
+        image_no += 1
+        xml_no += 1
